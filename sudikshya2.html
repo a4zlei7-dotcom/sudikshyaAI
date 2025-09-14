@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini AI Chatbox (UI)</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#7c3aed;
+      --muted:#98a0b3;
+      --user:#0ea5a4;
+      --bot:#111827;
+      --glass: rgba(255,255,255,0.03);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#071029 0%, #071624 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    /* Container */
+    .app{
+      width:100%;
+      max-width:920px;
+      height:720px;
+      border-radius:16px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      box-shadow: 0 10px 40px rgba(2,6,23,0.7), inset 0 1px 0 rgba(255,255,255,0.02);
+      display:grid;
+      grid-template-columns:320px 1fr;
+      overflow:hidden;
+    }
+
+    /* Left sidebar */
+    .sidebar{
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      padding:18px;
+      border-right:1px solid rgba(255,255,255,0.03);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .sb-top{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .avatar{
+      width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#06b6d4);
+      display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:18px;box-shadow:0 6px 18px rgba(124,58,237,0.18);
+    }
+    .title{
+      font-size:15px;font-weight:600;
+    }
+    .subtitle{font-size:12px;color:var(--muted);margin-top:2px}
+
+    .new-chat{
+      margin-top:8px;
+      background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      padding:8px;border-radius:10px;display:flex;gap:8px;align-items:center;cursor:pointer;
+    }
+    .chats{margin-top:8px;overflow:auto;padding-right:6px;flex:1}
+    .chat-item{
+      padding:10px;border-radius:8px;margin-bottom:8px;background:var(--glass);cursor:pointer;
+      display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.01)
+    }
+    .chat-item small{color:var(--muted);font-size:12px;margin-left:auto}
+
+    /* Right panel */
+    .main{
+      display:flex;flex-direction:column;height:100%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    }
+
+    .main-header{
+      padding:18px;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;align-items:center;gap:12px;
+    }
+    .bot-name{font-weight:700}
+    .status{color:var(--muted);font-size:13px;margin-left:6px}
+
+    .messages{
+      padding:20px;flex:1;overflow:auto;display:flex;flex-direction:column;gap:12px;
+      background-image: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.01), transparent 20%), radial-gradient(circle at 90% 90%, rgba(255,255,255,0.01), transparent 15%);
+    }
+
+    .bubble{
+      max-width:78%;
+      padding:12px 14px;border-radius:14px;line-height:1.25;font-size:14px;
+      box-shadow:0 6px 20px rgba(2,6,23,0.45);
+      position:relative;
+      word-wrap:break-word;
+    }
+    .bubble.user{
+      margin-left:auto;background:linear-gradient(180deg,var(--user),#06b6d4);color:#021212;border-bottom-right-radius:6px;border-bottom-left-radius:14px;border-top-right-radius:14px;
+    }
+    .bubble.bot{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      color:#e6eef6;border-top-left-radius:14px;border-top-right-radius:14px;border-bottom-left-radius:6px;
+      border:1px solid rgba(255,255,255,0.02)
+    }
+    .meta{font-size:11px;color:var(--muted);margin-top:6px;text-align:right}
+
+    .typing{
+      display:inline-block;height:8px;vertical-align:middle;
+    }
+    .dots{
+      display:inline-block;
+      margin-left:6px;
+    }
+    .dot{
+      width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:5px;opacity:0.3;
+      background:linear-gradient(180deg,#9ca3ff,#7c3aed);
+      animation: blink 1s infinite;
+    }
+    .dot:nth-child(2){animation-delay:.15s}
+    .dot:nth-child(3){animation-delay:.28s}
+    @keyframes blink{
+      0%{opacity:.2;transform:translateY(0)}
+      50%{opacity:1;transform:translateY(-6px)}
+      100%{opacity:.2;transform:translateY(0)}
+    }
+
+    /* Input area */
+    .composer{
+      padding:12px;border-top:1px solid rgba(255,255,255,0.02);display:flex;gap:12px;align-items:center;
+      background:linear-gradient(180deg, rgba(255,255,255,0.005), transparent);
+    }
+    .input{
+      flex:1;background:transparent;border:1px solid rgba(255,255,255,0.03);padding:10px;border-radius:10px;color:inherit;outline:none;
+      min-height:44px;resize:none;font-size:14px;
+    }
+    .btn{
+      background:linear-gradient(90deg,var(--accent),#06b6d4);padding:10px 14px;border-radius:10px;border:none;color:white;font-weight:700;cursor:pointer;
+      box-shadow:0 8px 20px rgba(7,11,34,0.45)
+    }
+    .suggestions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+
+    /* small helpers */
+    .muted{color:var(--muted)}
+    .right-small{font-size:12px;color:var(--muted);margin-left:auto}
+    .controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .icon-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:6px;border-radius:8px;cursor:pointer}
+    .footer-note{padding:10px 18px;color:var(--muted);font-size:12px;text-align:center}
+    /* scrollbar */
+    .messages::-webkit-scrollbar, .chats::-webkit-scrollbar {width:8px}
+    .messages::-webkit-scrollbar-thumb, .chats::-webkit-scrollbar-thumb {background:rgba(255,255,255,0.03);border-radius:8px}
+    @media (max-width:880px){
+      .app{grid-template-columns: 1fr; height:92vh; max-width:640px}
+      .sidebar{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Mini AI chatbox">
+    <aside class="sidebar" aria-hidden="false">
+      <div class="sb-top">
+        <div class="avatar">AI</div>
+        <div>
+          <div class="title">Mini AI — UI</div>
+          <div class="subtitle">Friendly bot design</div>
+        </div>
+      </div>
+
+      <div class="new-chat" id="newChatBtn" title="Start new chat">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="opacity:.9"><path d="M12 5v14M5 12h14" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <div style="font-weight:600">New chat</div>
+      </div>
+
+      <div class="chats" id="chatList" aria-live="polite">
+        <!-- Recent chats (sample) -->
+        <div class="chat-item"><div>Welcome chat</div><small>2 messages</small></div>
+        <div class="chat-item"><div>Ideas & UI</div><small>5 messages</small></div>
+      </div>
+
+      <div style="margin-top:8px">
+        <div class="right-small">Quick tips</div>
+        <div class="muted" style="font-size:13px;margin-top:6px">Try the chips below, press Enter to send, or click the bot bubble to play.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-header">
+        <div class="bot-name">Mini AI</div>
+        <div class="status">— online</div>
+        <div class="controls" style="margin-left:auto">
+          <button class="icon-btn" id="clearBtn" title="Clear conversation">Clear</button>
+          <button class="icon-btn" id="themeBtn" title="Toggle theme">Theme</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages" aria-live="polite" aria-atomic="false">
+        <!-- messages inserted here -->
+        <div id="welcome" style="opacity:.95">
+          <div class="bubble bot">
+            Hey — I'm Mini AI (UI only). Try typing a question or click a suggestion below.
+            <div class="meta">Today — ready to chat</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer" role="region" aria-label="Message composer">
+        <div style="flex:1">
+          <textarea id="input" class="input" rows="1" placeholder="Type a message..."></textarea>
+          <div class="suggestions" id="suggestions">
+            <div class="chip">Give me an idea</div>
+            <div class="chip">Tell a joke</div>
+            <div class="chip">What's the weather?</div>
+            <div class="chip">Explain HTML</div>
+          </div>
+        </div>
+        <button id="sendBtn" class="btn">Send</button>
+      </div>
+
+      <div class="footer-note">This demo is UI-only — responses are simulated on your device.</div>
+    </main>
+  </div>
+
+  <script>
+    // ---------- Fake bot logic ----------
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const suggestions = document.getElementById('suggestions');
+    const clearBtn = document.getElementById('clearBtn');
+    const newChatBtn = document.getElementById('newChatBtn');
+
+    // Faux responses - mix of helpful, witty and meta UI replies.
+    const RESPONSES = [
+      "Nice question — here's a quick idea: build a tiny weather card that updates its color based on temperature.",
+      "Haha — here's a short joke: Why did the HTML element break up with CSS? It felt too styled.",
+      "I can't access the internet from here, but I can show you how you'd fetch weather using fetch() and a public API.",
+      "Try using localStorage to keep chat history on the same device. It's simple and fast!",
+      "You could animate the chat bubbles using keyframes and transform for a sleek feel.",
+      "Would you like a code snippet? I can show a sample HTML/CSS block.",
+      "Tell me more about what you want and I'll suggest the next step.",
+      "That sounds fun — want a mockup or a step-by-step plan?"
+    ];
+
+    // Utility: format time
+    function nowTime(){
+      const d = new Date();
+      return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+    }
+
+    // Append message element
+    function appendBubble({who='bot', text='', meta='' , allowHTML=false}){
+      const wrap = document.createElement('div');
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + (who === 'user' ? 'user' : 'bot');
+      bubble.setAttribute('data-who', who);
+      if(allowHTML){
+        bubble.innerHTML = text;
+      } else {
+        bubble.textContent = text;
+      }
+      if(meta){
+        const m = document.createElement('div');
+        m.className = 'meta';
+        m.textContent = meta;
+        bubble.appendChild(m);
+      }
+      wrap.appendChild(bubble);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight - messagesEl.clientHeight + 40;
+      return bubble;
+    }
+
+    // Show typing indicator
+    function showTyping(){
+      const wrap = document.createElement('div');
+      wrap.className = 'typingWrap';
+      wrap.innerHTML = '<div class="bubble bot typing"><span class="typing">Thinking</span><span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>';
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return wrap;
+    }
+
+    // Simulate bot reply
+    function botReply(userText){
+      // Determine a response (random but slightly influenced)
+      let response = RESPONSES[Math.floor(Math.random()*RESPONSES.length)];
+      if(/joke|funny|haha/i.test(userText)){
+        response = "Alright — here's one: I told my computer I needed a break, it said: 'Error 404: Coffee not found.'";
+      } else if(/idea|project|build/i.test(userText)){
+        response = "Idea: Make a single-page portfolio that shows projects as cards. Each card flips to reveal details.";
+      } else if(/html|css|javascript|code/i.test(userText)){
+        response = "Tip: Keep structure in HTML, visuals in CSS, and behavior in JS. Want a code example?";
+      } else if(/weather/i.test(userText)){
+        response = "I can't fetch live weather here, but you'd use fetch() to call a weather API and then update the DOM.";
+      } else if(/hello|hi|hey/i.test(userText)){
+        response = "Hey! 👋 What can I do for you today?";
+      }
+
+      // show typing
+      const typing = showTyping();
+      // fake delay: vary between 600ms - 1400ms
+      const delay = 600 + Math.random()*900;
+      setTimeout(()=>{
+        typing.remove();
+        appendBubble({who:'bot', text:response, meta: nowTime()});
+      }, delay);
+    }
+
+    // Handle send
+    function sendMessage(){
+      const text = inputEl.value.trim();
+      if(!text) return;
+      appendBubble({who:'user', text:text, meta: nowTime()});
+      inputEl.value = '';
+      // small delay then bot replies
+      setTimeout(()=>botReply(text), 120);
+    }
+
+    // Suggestions click
+    suggestions.addEventListener('click', (e)=>{
+      const chip = e.target.closest('.chip');
+      if(!chip) return;
+      inputEl.value = chip.textContent;
+      inputEl.focus();
+    });
+
+    // Send button / Enter key
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Clear conversation
+    clearBtn.addEventListener('click', ()=>{
+      messagesEl.innerHTML = '';
+      appendBubble({who:'bot', text:"Conversation cleared. Ask me anything!", meta: nowTime()});
+    });
+
+    // New chat
+    newChatBtn.addEventListener('click', ()=>{
+      messagesEl.innerHTML = '';
+      appendBubble({who:'bot', text:"New chat started. Try: 'Give me a website idea.'", meta: nowTime()});
+    });
+
+    // Click bot bubble to get another reply (playful)
+    messagesEl.addEventListener('click', (e)=>{
+      const bubble = e.target.closest('.bubble.bot');
+      if(bubble){
+        appendBubble({who:'user', text:'Can you elaborate?', meta: nowTime()});
+        setTimeout(()=>botReply('elaborate'), 180);
+      }
+    });
+
+    // make textarea grow with content
+    inputEl.addEventListener('input', ()=>{
+      inputEl.style.height = 'auto';
+      inputEl.style.height = (inputEl.scrollHeight) + 'px';
+    });
+
+    // Add an initial friendly bot line
+    (function init(){
+      messagesEl.innerHTML = '';
+      appendBubble({who:'bot', text:"Hi — I'm a demo UI. Try 'Tell a joke' or 'Give me an idea'.", meta: nowTime()});
+    })();
+
+    // Optional: keyboard shortcut Ctrl+K to focus input
+    document.addEventListener('keydown',(e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); inputEl.focus(); }
+    });
+
+  </script>
+</body>
+</html>
